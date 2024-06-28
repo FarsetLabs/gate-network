@@ -1,0 +1,6 @@
+{
+    "access-front-door": "psk-access-front-door",
+    "button-door": "psk-button-door",
+    "scanner-front-door": "psk-scanner-front-door",
+    "manager-terminal": "psk-manager-terminal"
+}

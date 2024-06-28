@@ -1,3 +1,6 @@
+# Custom
+config/pre-shared-keys.json
+
 # Logs
 logs
 *.log

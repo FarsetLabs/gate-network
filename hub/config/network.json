@@ -1,0 +1,24 @@
+{
+  "nodes": [
+    {
+      "id": "access-front-door",
+      "roles": ["recipient"]
+    },
+    {
+      "id": "button-door",
+      "roles": ["sender"],
+      "affects": ["access-front-door"]
+    },
+    {
+      "id": "scanner-front-door",
+      "roles": ["sender"],
+      "affects": ["access-front-door"],
+      "checks": ["cardHasAccess"]
+    },
+    {
+      "id": "manager-terminal",
+      "roles": ["sender"],
+      "affects": ["access-front-door"]
+    }
+  ]
+}
