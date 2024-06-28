@@ -5,5 +5,6 @@ This includes the devices, control server, etc.
 
 Current code in the repository:
 
-- `hub/` — the central router and auth check for devices communicating with
+- `hub/` — The central router and auth check for devices communicating with
   eachother
+- `access-front-door/` — The device for unlocking the front-door
