@@ -45,6 +45,10 @@ pip3 install -U mpremote
         // Replace <python_version> with whatever the folder name is in .venv/lib/
         ".venv/lib/<python_version>/site-packages",
     ],
+    "python.analysis.extraPaths": [
+        // Allow importing from lib/
+        "access-front-door/src/lib",
+    ],
     "pylint.args": [
         // Fixes imports
         "--init-hook 'import sys; sys.path.append(\".\")'",

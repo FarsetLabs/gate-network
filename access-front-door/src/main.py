@@ -1,60 +1,96 @@
-import socket
-import time
-
 import network
+import uasyncio as asyncio
+import utime as time
 from machine import PWM, Pin
+from phew import server
+from phew.server import Request
 
 from . import env
 
 
-# Variables
-RESPONSE = "HTTP/1.1 200 OK\r\nContent-Length: 0\r\nConnection: close\r\n\r\n"
-
-
-class Door():
+class Wifi():
     def __init__(self):
-        self.pwm = PWM(Pin(23)) # Set up pin D23 to output
-        self.led = Pin(2, Pin.OUT) # Pin 2 is the built-in LED
-        self.setup_wifi()
-        self.setup_socket()
-
-    def setup_wifi(self):
         self.wifi = network.WLAN(network.STA_IF)
-        self.wifi.active(True)
         time.sleep_us(100)
         self.wifi.config(dhcp_hostname=env.HOSTNAME)
 
-    def connect_wifi(self):
+    async def connect(self, timeout_ms=60*1000):
+        if self.isconnected():
+            return True
+
         # Connect to WiFi
+        self.wifi.active(True)
         self.wifi.connect(env.WIFI_SSID, env.WIFI_PASSWORD)
-        while not self.wifi.isconnected():
-            pass
+        try:
+            await asyncio.wait_for_ms(self.wait_for_connected(), timeout_ms)
+            return True
+        except asyncio.TimeoutError:
+            self.wifi.disconnect()
+            self.wifi.active(False)
+            return False
     
-    def setup_socket(self):
-        # Set up webserver
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.socket.bind(('', 8080))
-        self.socket.listen(5)
+    def ip(self):
+        return self.wifi.ifconfig()[0]
 
-    def get_parameters_from(self, request: bytes):
-        parameters: dict[str, str] = {}
-        request_str = request.decode('utf-8')
-        params_index = request_str.find('Content-Length:')
-        ampersand_split = request_str[params_index:].split("&")
-        for element in ampersand_split:
-            equal_split = element.split("=")
-            parameters[equal_split[0]] = equal_split[1]
+    def isconnected(self):
+        return self.wifi.isconnected()
+    
+    async def wait_for_connected(self, connected=True):
+        while self.isconnected() is not connected:
+            await asyncio.sleep_ms(500)
+    
+    async def wait_for_disconnected(self):
+        while self.isconnected():
+            await asyncio.sleep_ms(500)
+    
+    async def stay_connected(self):
+        while True:
+            await self.connect()
+            await asyncio.sleep_ms(500)
 
-        return parameters
 
-    def read_socket(self):
-        conn: socket.socket = self.socket.accept()[0]
-        request = conn.recv(1024)
-        parameters = self.get_parameters_from(request)
-        conn.send(RESPONSE)
-        conn.close()
+class DoorServer():
+    def __init__(self):
+        self.pwm = PWM(Pin(23)) # Set up pin D23 to output
+        self.led = Pin(2, Pin.OUT) # Pin 2 is the built-in LED
+        self.setup_server()
 
-        return parameters
+        # Tracks locks / unlocks so that we only actually lock when
+        # the value is 0
+        self.lock_queue = 0
+    
+    def setup_server(self):
+        self.server = server.Phew()
+        self.server.add_route('/', self.index, methods=['POST'])
+    
+    def parse_duration(self, duration):
+        try:
+            return int(duration)
+        except (TypeError, ValueError):
+            return env.DEFAULT_UNLOCK_DURATION
+    
+    async def index(self, request: Request):
+        params = request.data
+
+        # Bail if the request didn't come from a known source
+        if params.get('psk') != env.SHARED_PASSWORD:
+            return
+
+        duration = self.parse_duration(params.get("duration"))
+        unlock_duration = max(min(duration, 30), 1)
+
+        self.lock_queue += 1
+        self.unlock()
+
+        asyncio.create_task(self.schedule_lock(unlock_duration))
+        return 'OK'
+
+    async def schedule_lock(self, duration: int):
+        await asyncio.sleep(duration)
+
+        self.lock_queue -= 1
+        if self.lock_queue == 0:
+            self.lock()
     
     def lock(self):
         self.led.off()
@@ -64,37 +100,22 @@ class Door():
         # Output signal on pin to unlock and light up the internal light
         self.led.on()
         self.pwm.duty(1023)
-
+    
     def run(self):
-        while True:
-            try:
-                self.update()
-            except Exception as e:
-                print(e)
+        self.server.run()
 
-    def update(self):
-        self.lock()
 
-        if not self.wifi.isconnected():
-            self.connect_wifi()
+async def main():
+    door = DoorServer()
+    door.lock()
 
-        parameters = self.read_socket()
+    wifi = Wifi()
+    while not await wifi.connect():
+        print('Connecting...')
+    print('Connected:', wifi.ip())
 
-        # Bail if the request didn't come from a known source
-        if parameters.get('psk') != env.SHARED_PASSWORD:
-            return
-
-        duration = parameters.get("duration")
-        try:
-            duration = int(duration) if duration is not None else env.DEFAULT_UNLOCK_DURATION
-        except ValueError:
-            return
-        unlock_duration = max(min(duration, 30), 1)
-
-        self.unlock()
-        time.sleep(unlock_duration)
+    door.run()
 
 
 if __name__ == '__main__':
-    door = Door()
-    door.run()
+    asyncio.run(main())
