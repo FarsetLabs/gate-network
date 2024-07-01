@@ -15,7 +15,7 @@ class Wifi():
         self.wifi.config(dhcp_hostname=env.HOSTNAME)
 
     async def connect(self, timeout_ms=60*1000):
-        if self.isconnected():
+        if self.is_connected():
             return True
 
         # Connect to WiFi
@@ -32,15 +32,15 @@ class Wifi():
     def ip(self):
         return self.wifi.ifconfig()[0]
 
-    def isconnected(self):
+    def is_connected(self):
         return self.wifi.isconnected()
     
     async def wait_for_connected(self, connected=True):
-        while self.isconnected() is not connected:
+        while self.is_connected() is not connected:
             await asyncio.sleep_ms(500)
     
     async def wait_for_disconnected(self):
-        while self.isconnected():
+        while self.is_connected():
             await asyncio.sleep_ms(500)
     
     async def stay_connected(self):
