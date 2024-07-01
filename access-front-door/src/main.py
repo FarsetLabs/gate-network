@@ -5,14 +5,12 @@ from machine import PWM, Pin
 from phew import server
 from phew.server import Request
 
-from . import env
+import env
 
 
 class Wifi():
     def __init__(self):
         self.wifi = network.WLAN(network.STA_IF)
-        time.sleep_us(100)
-        self.wifi.config(dhcp_hostname=env.HOSTNAME)
 
     async def connect(self, timeout_ms=60*1000):
         if self.is_connected():
@@ -68,7 +66,7 @@ class DoorServer():
             return env.DEFAULT_UNLOCK_DURATION
     
     async def index(self, request: Request):
-        params = request.data
+        params = request.form
 
         # Bail if the request didn't come from a known source
         if params.get('psk') != env.SHARED_PASSWORD:
