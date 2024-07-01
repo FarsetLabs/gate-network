@@ -55,9 +55,7 @@ class DoorServer():
         self.led = Pin(2, Pin.OUT) # Pin 2 is the built-in LED
         self.setup_server()
 
-        # Tracks locks / unlocks so that we only actually lock when
-        # the value is 0
-        self.lock_queue = 0
+        self.unlocked_until = 0
     
     def setup_server(self):
         self.server = server.Phew()
@@ -79,17 +77,22 @@ class DoorServer():
         duration = self.parse_duration(params.get("duration"))
         unlock_duration = max(min(duration, 30), 1)
 
-        self.lock_queue += 1
         self.unlock()
-
-        asyncio.create_task(self.schedule_lock(unlock_duration))
+        asyncio.create_task(self.schedule_lock(unlock_duration * 1000))
         return 'OK'
 
-    async def schedule_lock(self, duration: int):
-        await asyncio.sleep(duration)
+    async def schedule_lock(self, duration_ms: int):
+        until_ms = time.ticks_add(time.ticks_ms(), duration_ms)
+        # if until_ms - self.unlocked_until is a negative number then
+        # until_ms is before than the current value and we exit early
+        if time.ticks_diff(until_ms, self.unlocked_until) < 0:
+            return
 
-        self.lock_queue -= 1
-        if self.lock_queue == 0:
+        self.unlocked_until = until_ms
+        await asyncio.sleep_ms(duration_ms)
+
+        # check that self.unlocked_until hasn't been updated
+        if self.unlocked_until == until_ms:
             self.lock()
     
     def lock(self):
