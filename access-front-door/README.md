@@ -3,6 +3,23 @@
 This is the code required for opening the front door latch.
 
 
+## Flashing ESP32
+
+```bash
+pip install esptool
+
+# Find the serial port of the connected ESP32
+esptool.py flash_id 
+
+# Wipe the chip
+esptool.py --port [serial_port] erase_flash 
+
+# Download the latest firmware from https://micropython.org/download/ESP32_GENERIC/
+# Install th firmware
+esptool.py --chip esp32 --port [serial_port] --baud 460800 write_flash -z 0x1000 [path_to_downloaded_bin_file]
+```
+
+
 ## Setting up environment variables
 
 1. Copy or rename `access-front-door/src/env.example.py` to `access-front-door/src/env.py`
