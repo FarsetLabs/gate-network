@@ -26,21 +26,17 @@ class Wifi():
             self.wifi.disconnect()
             self.wifi.active(False)
             return False
-    
+
     def ip(self):
         return self.wifi.ifconfig()[0]
 
     def is_connected(self):
         return self.wifi.isconnected()
     
-    async def wait_for_connected(self, connected=True):
-        while self.is_connected() is not connected:
+    async def wait_for_connected(self, connection_state=True):
+        while self.is_connected() is not connection_state:
             await asyncio.sleep_ms(500)
-    
-    async def wait_for_disconnected(self):
-        while self.is_connected():
-            await asyncio.sleep_ms(500)
-    
+
     async def stay_connected(self):
         while True:
             await self.connect()
@@ -54,17 +50,17 @@ class DoorServer():
         self.setup_server()
 
         self.unlocked_until = 0
-    
+
     def setup_server(self):
         self.server = server.Phew()
         self.server.add_route('/', self.index, methods=['POST'])
-    
+
     def parse_duration(self, duration):
         try:
             return int(duration)
         except (TypeError, ValueError):
             return env.DEFAULT_UNLOCK_DURATION
-    
+
     async def index(self, request: Request):
         params = request.form
 
@@ -82,7 +78,7 @@ class DoorServer():
     async def schedule_lock(self, duration_ms: int):
         until_ms = time.ticks_add(time.ticks_ms(), duration_ms)
         # if until_ms - self.unlocked_until is a negative number then
-        # until_ms is before than the current value and we exit early
+        # until_ms is before the current value and we exit early
         if time.ticks_diff(until_ms, self.unlocked_until) < 0:
             return
 
@@ -92,7 +88,7 @@ class DoorServer():
         # check that self.unlocked_until hasn't been updated
         if self.unlocked_until == until_ms:
             self.lock()
-    
+
     def lock(self):
         self.led.off()
         self.pwm.duty(0)
@@ -101,7 +97,7 @@ class DoorServer():
         # Output signal on pin to unlock and light up the internal light
         self.led.on()
         self.pwm.duty(1023)
-    
+
     def run(self):
         self.server.run()
 
