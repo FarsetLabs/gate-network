@@ -9,22 +9,30 @@ This is the code required for opening the front door latch.
 pip install esptool
 
 # Find the serial port of the connected ESP32
-esptool.py flash_id 
+esptool.py flash_id
 
 # Wipe the chip
-esptool.py --port [serial_port] erase_flash 
+esptool.py --port [serial_port] erase_flash
 
 # Download the latest firmware from https://micropython.org/download/ESP32_GENERIC/
-# Install th firmware
+# Install the firmware
 esptool.py --chip esp32 --port [serial_port] --baud 460800 write_flash -z 0x1000 [path_to_downloaded_bin_file]
 ```
 
 
 ## Setting up environment variables
 
-1. Copy or rename `access-front-door/src/env.example.py` to `access-front-door/src/env.py`
-2. Set `WIFI_SSID` and `WIFI_PASSWORD` to your wifi ssid and password
-3. Update any other variables
+1. Clone this repository
+   ```sh
+   git clone git@github.com:FarsetLabs/gate-network.git
+   cd gate-network
+   ```
+1. Create the environment file
+   ```sh
+   cp ./access-front-door/src/env.example.py ./access-front-door/src/env.py
+   ```
+1. Set `WIFI_SSID` and `WIFI_PASSWORD` to your wifi ssid and password
+1. Update any other variables
 
 
 ## Micropython type hints in VSCode

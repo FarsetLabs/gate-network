@@ -1,4 +1,3 @@
-import network
 import uasyncio as asyncio
 import utime as time
 from machine import PWM, Pin
@@ -6,41 +5,8 @@ from phew import server
 from phew.server import Request
 
 import env
-
-
-class Wifi():
-    def __init__(self):
-        self.wifi = network.WLAN(network.STA_IF)
-
-    async def connect(self, timeout_ms=60*1000):
-        if self.is_connected():
-            return True
-
-        # Connect to WiFi
-        self.wifi.active(True)
-        self.wifi.connect(env.WIFI_SSID, env.WIFI_PASSWORD)
-        try:
-            await asyncio.wait_for_ms(self.wait_for_connected(), timeout_ms)
-            return True
-        except asyncio.TimeoutError:
-            self.wifi.disconnect()
-            self.wifi.active(False)
-            return False
-
-    def ip(self):
-        return self.wifi.ifconfig()[0]
-
-    def is_connected(self):
-        return self.wifi.isconnected()
-    
-    async def wait_for_connected(self, connection_state=True):
-        while self.is_connected() is not connection_state:
-            await asyncio.sleep_ms(500)
-
-    async def stay_connected(self):
-        while True:
-            await self.connect()
-            await asyncio.sleep_ms(500)
+from hub import Hub
+from wifi import Wifi
 
 
 class DoorServer():
@@ -68,7 +34,9 @@ class DoorServer():
         if params.get('psk') != env.SHARED_PASSWORD:
             return
 
-        duration = self.parse_duration(params.get("duration"))
+        # Reparse any params which were passed from the initial sender
+        proxied_params = server._parse_query_string(params.get("params"))
+        duration = self.parse_duration(proxied_params.get("duration"))
         unlock_duration = max(min(duration, 30), 1)
 
         self.unlock()
@@ -99,17 +67,25 @@ class DoorServer():
         self.pwm.duty(1023)
 
     def run(self):
-        self.server.run()
+        self.server.run(port = 8080)
 
 
 async def main():
     door = DoorServer()
     door.lock()
 
-    wifi = Wifi()
+    wifi = Wifi(env)
     while not await wifi.connect():
         print('Connecting...')
     print('Connected:', wifi.ip())
+
+    print("Registering with the hub ...")
+    hub = Hub(env)
+    status_code = hub.register_device('access-front-door')
+    if status_code == 200:
+        print('Device registered successfully')
+    else:
+        print('Error registering device:', status_code)
 
     door.run()
 
