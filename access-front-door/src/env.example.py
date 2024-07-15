@@ -1,0 +1,5 @@
+WIFI_SSID = ""
+WIFI_PASSWORD = ""
+SHARED_PASSWORD = "access-front-door-psk"
+HUB_IP_ADDRESS = ""
+DEFAULT_UNLOCK_DURATION = 10
