@@ -15,7 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "body-parser": "^1.20.2",
-    "express": "^4.19.2"
+    "express": "^4.21.1"
   },
   "devDependencies": {
     "prettier": "^3.3.2"
